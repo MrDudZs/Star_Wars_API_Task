@@ -25,20 +25,27 @@ try:
         print(data)
     # get_starships_api() # confirm query
 
-    def add_starships_to_db():
+    def add_starships_to_db(): # See bug tracking (Importing starships as one object)
         try:
             # Get starships
-            endpoint = requests.get("https://swapi.dev/api/starships/")
-            endpoint.json()
-            # print(endpoint.json())
-
+            endpoint = "https://swapi.dev/api/starships/"
+            starships = []
             # Create starships collection
             db = client["starwars"]
             db.create_collection("starships")
+            while endpoint: # Loop
+                response = requests.get(endpoint)
+                response.raise_for_status()
+                data = response.json()
+                starships.extend(data["results"])
+                endpoint = data["next"]
 
-            # Add Starships to the collection in db
-            db.starships.insert_one(endpoint)
-
+                # Add Starships to the collection in db
+                # Avoids duplicates
+                db.starships.drop()
+                result = db.starships.insert_many(starships)
+                print(f"Inserted {len(result.inserted_ids)} starships")
+            return starships
         except Exception as e:
             print(e)
 
@@ -60,7 +67,7 @@ try:
         # plan: re-import with newest dataset (using old characters' dataset)
         # filter by characters with starships, and display starship, _id, name
 
-    get_pilot_ids()
+    # get_pilot_ids()
 
     def replace_pilots_and_insert():
         set
