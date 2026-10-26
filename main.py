@@ -33,7 +33,7 @@ try:
             # Create starships collection
             db = client["starwars"]
             db.create_collection("starships")
-            while endpoint: # Loop
+            while endpoint: # Loop to get all starships
                 response = requests.get(endpoint)
                 response.raise_for_status()
                 data = response.json()
@@ -51,29 +51,63 @@ try:
 
     # add_starships_to_db()
 
+    def get_people_api():
+        endpoint = requests.get("https://swapi.dev/api/people/")
+        data = endpoint.json()
+        print(data)
+    # get_people_api()# confirm query
 
-    def get_pilot_ids():
+
+    def import_new_characters(): # This replaces the get pilots by ID
         # Query ID and Name
-
         db = client["starwars"]
+        # Drop existing characters collection in db:
 
-        print(db.characters.find_one(
-            {},
-            {"_id": 1, "name": 1}
-        ))
+        try:
+            # Get characters from people
+            endpoint = "https://swapi.dev/api/people/"
+            characters = []
+            # Create characters collection
+            db = client["starwars"]
+            db.create_collection("characters")
+            while endpoint: # Loop to get all characters
+                response = requests.get(endpoint)
+                response.raise_for_status()
+                data = response.json()
+                characters.extend(data["results"])
+                endpoint = data["next"]
 
-        # Goal to filter by ship type
-        # Find ship type in person data and then add that persons id value as pilot to ships data
-        # plan: re-import with newest dataset (using old characters' dataset)
-        # filter by characters with starships, and display starship, _id, name
+                # Add characters to the collection in db
+                # Avoids duplicates
+                db.characters.drop()
+                result = db.characters.insert_many(characters)
+                print(f"Inserted {len(result.inserted_ids)} characters")
+            return characters
+        except Exception as e:
+            print(e)
 
-    # get_pilot_ids()
+
+
+    # import_new_characters()
 
     def replace_pilots_and_insert():
-        set
-        # Goal once get_pilot_ids is done
-        # use the query of get_pilots_id, then check starships in persons field and match to name in starship field.
-        # add persons _id to the pilots column in star ships
+        db = client["starwars"]
+
+        # Clear existing pilots
+        db.starships.update_many({}, {"$set": {"pilots": []}})
+
+        # Find characters that have starships
+        for char in db.characters.find({"starships": {"$ne": []}}, {"_id": 1, "starships": 1}):
+            for ship_url in char["starships"]:
+                # Match starship by its url field, add character _id to pilots
+                db.starships.update_one(
+                    {"url": ship_url},
+                    {"$addToSet": {"pilots": char["_id"]}}
+                )
+
+
+    replace_pilots_and_insert()
+
 
 except Exception as e:
     raise Exception(
