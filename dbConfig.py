@@ -7,7 +7,7 @@ def connect_mongodb():
 
         client.admin.command("ping")
         print("Connected successfully")
-        # other application code
+
         client.close()
     except Exception as e:
         raise Exception(
